@@ -12,8 +12,10 @@ import Rectangle from './rectangle';
 import Circle from './circle';
 import Pan from './pan';
 import Tool from './tools';
-
+import FabricCanvasTool from './fabrictool'
 import {fabric } from 'fabric'
+
+export {FabricCanvasTool}
 /**
  * Sketch Tool based on FabricJS for React Applications
  */
@@ -96,6 +98,14 @@ class SketchField extends PureComponent {
     canvas.allowTouchScrolling = true
   };
 
+  addTool = (key, typeConstructor) =>{
+    this._tools[key] = new typeConstructor(this._fc)
+    if(this.props.tool == key)
+    {
+      this._selectedTool = this._tools[this.props.tool] || this._tools[Tool.Pencil]
+      this._selectedTool.configureCanvas(this.props);
+    }
+  }
   /**
    * Disable touch Scrolling on Canvas
    */
@@ -118,6 +128,8 @@ class SketchField extends PureComponent {
    *   scale: <Number: initial scale of image>
    * }
    */
+
+
   addImg = (dataUrl, options = {}) => {
     let canvas = this._fc;
     fabric.Image.fromURL(dataUrl, (oImg) => {

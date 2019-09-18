@@ -1,5 +1,5 @@
 {
-  "name": "react-sketch",
+  "name": "@schlaegerz/react-sketch",
   "version": "0.5.1",
   "description": "Sketch Element for React based applications, backed-up by fabricjs as its core",
   "keywords": [
@@ -34,8 +34,7 @@
     "prepublish": "npm run test && npm run build",
     "prebuild": "rimraf dist",
     "start": "node webpack/server.js",
-    "start:debug": "weinre --boundHost `my-local-ip` ",
-    "test": "jest --coverage"
+    "start:debug": "weinre --boundHost `my-local-ip` "
   },
   "engines": {
     "node": ">= 8"
@@ -69,6 +68,7 @@
   "devDependencies": {
     "@babel/cli": "^7.1.5",
     "@babel/core": "7.1.5",
+    
     "@babel/plugin-proposal-class-properties": "7.1.0",
     "@babel/plugin-proposal-decorators": "7.1.2",
     "@babel/plugin-proposal-export-namespace-from": "7.0.0",
@@ -87,7 +87,6 @@
     "@material-ui/core": "^3.4.0",
     "@material-ui/icons": "^3.0.1",
     "@material-ui/lab": "^3.0.0-alpha.23",
-    "babel-core": "7.0.0-beta.3",
     "babel-eslint": "10.0.1",
     "babel-jest": "23.6.0",
     "babel-loader": "8.0.4",
