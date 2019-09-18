@@ -17,11 +17,14 @@ function containsObject(obj, list) {
 }
 
 const externals = [];
-const internals = ['fabric', 'canvas'];
 
 module.exports = {
   entry: {
     src: './src'
+  },
+  externals:{
+    canvas:'canvas',
+    fabric:'fabric',
   },
   performance: {
     hints: false
@@ -46,7 +49,6 @@ module.exports = {
     ]
   },
   plugins: [
-    new ModuleConcatenationPlugin(),
     new UglifyJsPlugin({
       parallel: true,
       uglifyOptions: {
@@ -55,7 +57,6 @@ module.exports = {
     }),
     new NoEmitOnErrorsPlugin(),
     new OccurrenceOrderPlugin(),
-    new AggressiveMergingPlugin(),
     new DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production')
     })

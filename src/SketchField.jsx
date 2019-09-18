@@ -13,8 +13,7 @@ import Circle from './circle';
 import Pan from './pan';
 import Tool from './tools';
 
-const fabric = require('fabric').fabric;
-
+import {fabric } from 'fabric'
 /**
  * Sketch Tool based on FabricJS for React Applications
  */
