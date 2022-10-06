@@ -8,6 +8,8 @@ class History {
     this.redoList = [];
     this.current = null;
     this.debug = debug;
+    this.atomic = false
+    this.atomicList = false
   }
 
   /**
@@ -19,13 +21,26 @@ class History {
     return this.undoLimit;
   }
 
+  atomicStart() {
+    this.atomic = true
+    this.atomicList = []
+  }
+  atomicEnd() {
+    this.atomic = false
+    this.keep([{
+      atomicList: this.atomicList
+    }])
+    this.atomicList = []
+  }
+
+
   /**
    * Get Current state
    *
    * @returns {null|*}
    */
   getCurrent() {
-    return this.current;
+    return this.undoList[this.undoList.length - 1]
   }
 
   /**
@@ -37,14 +52,21 @@ class History {
    */
   keep(obj) {
     try {
+      if (this.ignore) 
+      {
+        return;
+      }
+      if(this.atomic){
+        this.atomicList.push(obj)
+      }
+     else{
       this.redoList = [];
-      if (this.current) {
-        this.undoList.push(this.current);
+      if(obj){
+        this.undoList.push(obj)
+        if(this.undoList.length > this.undoLimit){
+          this.undoList.shift()
+        }
       }
-      if (this.undoList.length > this.undoLimit) {
-        this.undoList.shift();
-      }
-      this.current = obj;
     } finally {
       this.print();
     }
@@ -57,18 +79,16 @@ class History {
    */
   undo() {
     try {
-      if (this.current) {
-        this.redoList.push(this.current);
-        if (this.redoList.length > this.undoLimit) {
-          this.redoList.shift();
+      const t = this.undoList.pop();
+      if(t){
+
+        this.redoList.push(t)
+        if(this.redoList.length > this.undoLimit){
+          this.redoList.shift()
         }
-        if (this.undoList.length === 0) this.current = null;
+        return t
       }
-      if (this.undoList.length > 0) {
-        this.current = this.undoList.pop();
-        return this.current;
-      }
-      return null;
+      return t
     } finally {
       this.print();
     }
@@ -82,9 +102,7 @@ class History {
   redo() {
     try {
       if (this.redoList.length > 0) {
-        if (this.current) this.undoList.push(this.current);
-        this.current = this.redoList.pop();
-        return this.current;
+        return this.redoList.pop();
       }
       return null;
     } finally {
@@ -107,7 +125,7 @@ class History {
    * @returns {boolean}
    */
   canUndo() {
-    return this.undoList.length > 0 || this.current !== null;
+    return this.undoList.length > 0;
   }
 
   /**
