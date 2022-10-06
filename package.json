@@ -36,9 +36,7 @@
     "start": "node webpack/server.js",
     "start:debug": "weinre --boundHost `my-local-ip` "
   },
-  "engines": {
-    "node": ">= 8"
-  },
+  
   "lint-staged": {
     "*.{js,jsx,css,md}": [
       "eslint --fix",
@@ -132,6 +130,6 @@
     "react": "^16.6.1",
     "react-dom": "^16.6.1",
     "fabric": "2.4.3",
-    "canvas": "^1.6.12"
+    "canvas": "^2.0.0"
   }
 }
