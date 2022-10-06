@@ -731,13 +731,14 @@ class SketchField extends PureComponent {
     }
 
     if (this.props.tool !== prevProps.tool) {
+      this._selectedTool.cleanupTool(this.props);
       this._selectedTool =
         this._tools[this.props.tool] || this._tools[Tool.Pencil];
     }
 
     //Bring the cursor back to default if it is changed by a tool
     this._fc.defaultCursor = "default";
-    this._selectedTool.configureCanvas(this.props);
+    this._selectedTool.configureCanvas(this.props, this._history);
 
     if (this.props.backgroundColor !== prevProps.backgroundColor) {
       this._backgroundColor(this.props.backgroundColor);
@@ -748,6 +749,24 @@ class SketchField extends PureComponent {
       (this.props.value && this.props.forceValue)
     ) {
       this.fromJSON(this.props.value);
+    }
+    if (
+      this.props.imageData &&
+      this.imageData &&
+      this.props.imageMode != this.imageMode
+    ) {
+      var n = new fabric.Image.filters.Invert();
+      if (
+        (this.backgroundImage.filters.push(n),
+        this.backgroundImage.applyFilters(),
+        this._fc.requestRenderAll(),
+        this.props.onChange)
+      ) {
+        var o = this.props.onChange;
+        setTimeout(function () {
+          this.props.onChange();
+        }, 10);
+      }
     }
   };
 
