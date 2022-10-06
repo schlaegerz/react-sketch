@@ -344,7 +344,7 @@ class SketchField extends PureComponent {
     canvas.renderAll();
     canvas.calcOffset();
   };
-  
+
   _handleUndo(obj,prevState) {
     if (obj.__removed) {
       //this.setState({ action: false }, () => {
@@ -408,11 +408,42 @@ class SketchField extends PureComponent {
    * Perform a redo operation on canvas, if it cannot redo it will leave the canvas intact
    */
 
-  handleRedo(){
-
+  _handleRedo(obj, next, curState){
+   
+    if(obj.__version == 0){
+      this.canvas.add(obj)
+      obj.__version = 1
+    }
+    else{
+      obj.__version +=1
+      obj.setOptions(JSON.parse(curState))
+      obj.setCoords()
+    }
   }
   redo = () => {
-    
+    const history = this._history
+    history.ignore = true
+    if (history.canRedo()){
+
+      let [obj, prevState, currState] = history.getCurrent();
+
+      if(obj.atomicList){
+        obj.atomicList.forEach(item=>{
+          this._hanldeRedo(this.history[0], this.history[1])
+        })
+      }
+      else{
+        this._hanldeRedo(obj, prevState, currState)
+        
+      }
+
+    }
+    this._fc.renderAll()
+    history.ignore = true
+    if (this.props.onChange) {
+      this.props.onChange();
+    }
+  }
   };
 
   /**
@@ -664,6 +695,39 @@ class SketchField extends PureComponent {
     this.disableTouchScroll();
 
     this._resize();
+    if(this.props.imageData){
+       fabric.Image.fromURL(this.props.imageData, function(image) {
+        this.backgroundImage = image
+      var ratio = (image).width / image.height
+      var width = this.props.width,
+      var height = width / ratio;
+    // Needs to be cleaned up
+    if(this.props.height  < height){
+      (width = (height = this.props.height) * height);
+    }
+      var i = {
+        left: (this.props.width- width) / 2,
+        top: (this.props.height - height) / 2,
+        width: width,
+        height: height
+      };
+      image.setOptions(i)
+      this._history.ignore = true
+      image.filters.push(new fabric.Image.filters.Grayscale({
+        mode: "luminosity"
+      }))
+      image.applyFilters()
+      this._fc.add(e)
+       this._fc.renderAll(
+      if ( this.props.onChange) {
+        var s = t.props.onChange;
+        setTimeout((function() {
+          s()
+        }), 10)
+      }
+      this._history.ignore = false, this._history.clear()
+    }), 
+  }
 
     // initialize canvas with controlled value if exists
     (value || defaultValue) && this.fromJSON(value || defaultValue);
