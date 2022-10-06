@@ -102,8 +102,9 @@ class SketchField extends PureComponent {
     this._tools[key] = new typeConstructor(this._fc)
     if(this.props.tool == key)
     {
+      this._selectedTool.cleanupTool(this.props)
       this._selectedTool = this._tools[this.props.tool] || this._tools[Tool.Pencil]
-      this._selectedTool.configureCanvas(this.props);
+      this._selectedTool.configureCanvas(this.props, this._history);
     }
   }
   /**
@@ -152,14 +153,17 @@ class SketchField extends PureComponent {
    * Action when an object is added to the canvas
    */
   _onObjectAdded = (e) => {
+  /*  BEAUTIFY REMOVE? 
     if (!this.state.action) {
       this.setState({ action: true });
       return
     }
+    */
     let obj = e.target;
     obj.__version = 1;
     // record current object state as json and save as originalState
-    let objState = obj.toJSON();
+    //BEAUTIFY ADD
+    let objState = obj.toJSON({translateX: true, translateY:true});
     obj.__originalState = objState;
     let state = JSON.stringify(objState);
     // object, previous state, current state
@@ -170,7 +174,7 @@ class SketchField extends PureComponent {
    * Action when an object is moving around inside the canvas
    */
   _onObjectMoving = (e) => {
-
+    
   };
 
   /**
@@ -214,6 +218,8 @@ class SketchField extends PureComponent {
    * Action when the mouse button is pressed down
    */
   _onMouseDown = (e) => {
+    // BEAUTIFY THIS NEVER SET FALSE?
+    this.mouseDown = true
     this._selectedTool.doMouseDown(e);
   };
 
@@ -229,11 +235,11 @@ class SketchField extends PureComponent {
    */
   _onMouseOut = (e) => {
     this._selectedTool.doMouseOut(e);
-    if (this.props.onChange) {
+    if (this.props.onChange && this.mouseDown) {
       let onChange = this.props.onChange;
-      setTimeout(() => {
+  //   setTimeout(() => {
         onChange(e.e)
-      }, 10)
+    //  }, 10)
     }
   };
 
@@ -298,9 +304,11 @@ class SketchField extends PureComponent {
       obj.top = tempTop;
       obj.setCoords()
     }
+   /* BEAUTIFY REMOVE?
     this.setState({
       parentWidth: offsetWidth
     });
+    */
     canvas.renderAll();
     canvas.calcOffset();
   };
@@ -336,7 +344,39 @@ class SketchField extends PureComponent {
     canvas.renderAll();
     canvas.calcOffset();
   };
+  
+  _handleUndo(obj,prevState) {
+    if (obj.__removed) {
+      //this.setState({ action: false }, () => {
+      this._fc.add(obj);
+      if (obj.group) {
+        const transform = t.group.calcTransformMatrix();
+        const decomp = fabric.util.qrDecompose(o);
+        const trans = {
+          x: decomp.translateX,
+          y: decomp.translateY,
+        };
 
+        obj.transformMatrix = [1, 0, 0, 1, 0, 0];
+        (obj.flipX = false),
+          (obj.flipY = false),
+          trans.setOptions(r),
+          obj.setPositionByOrigin(trans, "center", "center");
+        obj.group.remove(t);
+      }
+      obj.__version -= 1;
+      obj.__removed = false;
+      //});
+    } else if (obj.__version <= 1) {
+      // HANDLE GROUP?
+      this._fc.remove(obj);
+    } else {
+      obj.__version -= 1;
+      obj.setOptions(JSON.parse(prevState));
+      obj.setCoords();
+     // this._fc.renderAll();
+    }
+  }
   /**
    * Perform an undo operation on canvas, if it cannot undo it will leave the canvas intact
    */
@@ -344,49 +384,35 @@ class SketchField extends PureComponent {
     let history = this._history;
     let [obj, prevState, currState] = history.getCurrent();
     history.undo();
-    if (obj.__removed) {
-      this.setState({ action: false }, () => {
-        this._fc.add(obj);
-        obj.__version -= 1;
-        obj.__removed = false;
-      });
-    } else if (obj.__version <= 1) {
-      this._fc.remove(obj);
-    } else {
-      obj.__version -= 1;
-      obj.setOptions(JSON.parse(prevState));
-      obj.setCoords();
-      this._fc.renderAll()
+    history.ignore = true
+    this._fc.clearContext(this._fc.contextTop)
+    this._fc.renderAll()
+    if(obj.atomicList){
+        obj.atomicList.forEach(item=>{
+          this._handleUndo(this.history[0], this.history[1])
+        })
     }
+    else{
+      this._handleUndo(obj, prevState, currState)
+
+    } 
+    this._fc.discardActiveObject().renderAll()
+    history.ignore = false
+
     if (this.props.onChange) {
-      this.props.onChange()
+      this.props.onChange();
     }
   };
 
   /**
    * Perform a redo operation on canvas, if it cannot redo it will leave the canvas intact
    */
+
+  handleRedo(){
+
+  }
   redo = () => {
-    let history = this._history;
-    if (history.canRedo()) {
-      let canvas = this._fc;
-      //noinspection Eslint
-      let [obj, prevState, currState] = history.redo();
-      if (obj.__version === 0) {
-        this.setState({ action: false }, () => {
-          canvas.add(obj);
-          obj.__version = 1
-        })
-      } else {
-        obj.__version += 1;
-        obj.setOptions(JSON.parse(currState))
-      }
-      obj.setCoords();
-      canvas.renderAll();
-      if (this.props.onChange) {
-        this.props.onChange()
-      }
-    }
+    
   };
 
   /**
@@ -467,6 +493,11 @@ class SketchField extends PureComponent {
     let discarded = this.toJSON(propertiesToInclude);
     this._fc.clear();
     this._history.clear();
+    if(this.backgroundImage){
+      this._history.ignore = true
+      this._fc.add(this.backgroundImage)
+      this._history.ignore = false
+    }
     return discarded
   };
 
@@ -475,6 +506,8 @@ class SketchField extends PureComponent {
    */
   removeSelected = () => {
     let canvas = this._fc;
+    const isDrawingMide = this._fc.isDrawingMode
+    this._fc.isDrawingMode && (this._fc.isDrawingMode = false);
     let activeObj = canvas.getActiveObject();
     if (activeObj) {
       let selected = [];
@@ -483,6 +516,7 @@ class SketchField extends PureComponent {
       } else {
         selected.push(activeObj)
       }
+      this.atomicStart()
       selected.forEach(obj => {
         obj.__removed = true;
         let objState = obj.toJSON();
@@ -491,6 +525,8 @@ class SketchField extends PureComponent {
         this._history.keep([obj, state, state]);
         canvas.remove(obj);
       });
+      this.atomicEnd()
+
       canvas.discardActiveObject();
       canvas.requestRenderAll();
     }
@@ -559,6 +595,8 @@ class SketchField extends PureComponent {
       () => canvas.renderAll(), options);
     img.src = dataUrl
   };
+
+  updateBackgroundImageFromProps(){}
 
   addText = (text, options = {}) => {
     let canvas = this._fc;
