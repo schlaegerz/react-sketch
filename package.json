@@ -1,6 +1,6 @@
 {
   "name": "@schlaegerz/react-sketch",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Sketch Element for React based applications, backed-up by fabricjs as its core",
   "keywords": [
     "react",
@@ -36,7 +36,6 @@
     "start": "node webpack/server.js",
     "start:debug": "weinre --boundHost `my-local-ip` "
   },
-  
   "lint-staged": {
     "*.{js,jsx,css,md}": [
       "eslint --fix",
@@ -126,10 +125,8 @@
     "weinre": "^2.0.0-pre-I0Z7U9OV"
   },
   "dependencies": {
-    "prop-types": "^15.6.2",
-    "react": "^16.6.1",
-    "react-dom": "^16.6.1",
     "fabric": "2.4.3",
-    "canvas": "^2.0.0"
+    "react": "^18.2.0",
+    "react-dom": "^16.6.1"
   }
 }
