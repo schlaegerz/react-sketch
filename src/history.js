@@ -8,8 +8,8 @@ class History {
     this.redoList = [];
     this.current = null;
     this.debug = debug;
-    this.atomic = false
-    this.atomicList = false
+    this.atomic = false;
+    this.atomicList = false;
   }
 
   /**
@@ -22,17 +22,18 @@ class History {
   }
 
   atomicStart() {
-    this.atomic = true
-    this.atomicList = []
+    this.atomic = true;
+    this.atomicList = [];
   }
   atomicEnd() {
-    this.atomic = false
-    this.keep([{
-      atomicList: this.atomicList
-    }])
-    this.atomicList = []
+    this.atomic = false;
+    this.keep([
+      {
+        atomicList: this.atomicList,
+      },
+    ]);
+    this.atomicList = [];
   }
-
 
   /**
    * Get Current state
@@ -40,7 +41,7 @@ class History {
    * @returns {null|*}
    */
   getCurrent() {
-    return this.undoList[this.undoList.length - 1]
+    return this.undoList[this.undoList.length - 1];
   }
 
   /**
@@ -52,21 +53,22 @@ class History {
    */
   keep(obj) {
     try {
-      if (this.ignore) 
-      {
+      if (this.ignore) {
         return;
       }
-      if(this.atomic){
-        this.atomicList.push(obj)
-      }
-     else{
-      this.redoList = [];
-      if(obj){
-        this.undoList.push(obj)
-        if(this.undoList.length > this.undoLimit){
-          this.undoList.shift()
+      if (this.atomic) {
+        this.atomicList.push(obj);
+      } else {
+        this.redoList = [];
+        if (obj) {
+          this.undoList.push(obj);
+          if (this.undoList.length > this.undoLimit) {
+            this.undoList.shift();
+          }
         }
       }
+    } catch (e) {
+      //
     } finally {
       this.print();
     }
@@ -80,15 +82,14 @@ class History {
   undo() {
     try {
       const t = this.undoList.pop();
-      if(t){
-
-        this.redoList.push(t)
-        if(this.redoList.length > this.undoLimit){
-          this.redoList.shift()
+      if (t) {
+        this.redoList.push(t);
+        if (this.redoList.length > this.undoLimit) {
+          this.redoList.shift();
         }
-        return t
+        return t;
       }
-      return t
+      return t;
     } finally {
       this.print();
     }
@@ -143,8 +144,8 @@ class History {
       /* eslint-disable no-console */
       console.log(
         this.undoList,
-        ' -> ' + this.current + ' <- ',
-        this.redoList.slice(0).reverse(),
+        " -> " + this.current + " <- ",
+        this.redoList.slice(0).reverse()
       );
     }
   }
