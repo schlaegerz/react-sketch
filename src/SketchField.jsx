@@ -77,6 +77,20 @@ class SketchField extends PureComponent {
     parentWidth: 550,
     action: true,
   };
+
+  _parseObject(obj){
+    if(this.props.parseObject)
+    {
+      return this.props.parseObject(obj)
+    }
+    else{
+      const res = JSON.parse(obj)
+      if(res.eraser){
+       res.eraser =  fabric.Eraser.fromObject(res.eraser)
+      }
+      return res;
+    }
+  }
   _initTools = (fabricCanvas) => {
     this._tools = {};
     this._tools[Tool.Select] = new Select(fabricCanvas);
@@ -364,7 +378,7 @@ class SketchField extends PureComponent {
       this._fc.remove(obj);
     } else {
       obj.__version -= 1;
-      obj.setOptions(JSON.parse(prevState));
+      obj.setOptions(this._parseObject(prevState));
       obj.setCoords();
       // this._fc.renderAll();
     }
@@ -381,7 +395,7 @@ class SketchField extends PureComponent {
     this._fc.renderAll();
     if (obj.atomicList) {
       obj.atomicList.forEach((item) => {
-        this._handleUndo(this.history[0], this.history[1]);
+        this._handleUndo(item[0], item[1]);
       });
     } else {
       this._handleUndo(obj, prevState, currState);
@@ -404,7 +418,7 @@ class SketchField extends PureComponent {
       obj.__version = 1;
     } else {
       obj.__version += 1;
-      obj.setOptions(JSON.parse(curState));
+      obj.setOptions(this._parseObject(curState));
       obj.setCoords();
     }
   }
@@ -669,6 +683,23 @@ class SketchField extends PureComponent {
     canvas.on("object:moving", this._onObjectMoving);
     canvas.on("object:scaling", this._onObjectScaling);
     canvas.on("object:rotating", this._onObjectRotating);
+
+    canvas.on("erasing:end", (e) => {
+        if (!e?.targets?.length) {
+          return;
+        }
+
+        const history = this._history;
+        history.atomicStart();
+        for (const target of e.targets) {
+          console.log(target.eraser);
+          if (target) {
+            this._onObjectModified({ target: target });
+          }
+        }
+        this._onObjectAdded({ target: e.path });
+        history.atomicEnd();
+      });
     // IText Events fired on Adding Text
     // canvas.on("text:event:changed", console.log)
     // canvas.on("text:selection:changed", console.log)
