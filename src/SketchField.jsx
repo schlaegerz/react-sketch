@@ -82,6 +82,7 @@ class SketchField extends PureComponent {
     if (this.props.parseObject) {
       return this.props.parseObject(obj);
     } else {
+      delete obj.__originalState;
       const res = JSON.parse(obj);
       if (res.eraser) {
         // This is only fake async unless we are loading an image. If we start to load
@@ -172,6 +173,9 @@ class SketchField extends PureComponent {
     });
   };
 
+  _objToJSON(obj, params) {
+    return obj.toJSON(params);
+  }
   /**
    * Action when an object is added to the canvas
    */
@@ -180,9 +184,9 @@ class SketchField extends PureComponent {
     obj.__version = 1;
     // record current object state as json and save as originalState
     //BEAUTIFY ADD
-    let objState = obj.toJSON({ translateX: true, translateY: true });
-    obj.__originalState = objState;
-    let state = this._objectToString(objState);
+    let objState = this._objToJSON(obj, { translateX: true, translateY: true });
+    obj.__originalState = this._objectToString(objState);
+    let state = obj.__originalState;
     // object, previous state, current state
     this._history.keep([obj, state, state]);
   };
@@ -205,13 +209,13 @@ class SketchField extends PureComponent {
   _onObjectModified = (e) => {
     let obj = e.target;
     obj.__version += 1;
-    let prevState = this._objectToString(obj.__originalState);
-    let objState = obj.toJSON();
-    // record current object state as json and update to originalState
-    obj.__originalState = objState;
 
-    let currState = this._objectToString(objState);
-    this._history.keep([obj, prevState, currState]);
+    let prevState = obj.__originalState;
+    let objState = this._objToJSON(obj);
+    // record current object state as json and update to originalState
+    obj.__originalState = this._objectToString(objState);
+
+    this._history.keep([obj, prevState]);
   };
 
   /**
@@ -260,12 +264,12 @@ class SketchField extends PureComponent {
     // Update the final state to new-generated object
     // Ignore Path object since it would be created after mouseUp
     // Assumed the last object in canvas.getObjects() in the newest object
-    if (this.props.tool !== Tool.Pencil) {
+    if (this.props.tool !== Tool.Pencil && this.props.tool != "eraser") {
       const canvas = this._fc;
       const objects = canvas.getObjects();
       const newObj = objects[objects.length - 1];
       if (newObj && newObj.__version === 1) {
-        newObj.__originalState = newObj.toJSON();
+        newObj.__originalState = this._objectToString(this._objToJSON(newObj));
       }
     }
     if (this.props.onChange) {
@@ -386,6 +390,7 @@ class SketchField extends PureComponent {
       obj.__version -= 1;
       obj.setOptions(this._parseObject(prevState));
       obj.setCoords();
+      obj.__originalState = prevState;
       // this._fc.renderAll();
     }
   }
@@ -394,7 +399,7 @@ class SketchField extends PureComponent {
    */
   undo = () => {
     let history = this._history;
-    let [obj, prevState, currState] = history.getCurrent();
+    let [obj, prevState] = history.getCurrent();
     history.undo();
     history.ignore = true;
     this._fc.clearContext(this._fc.contextTop);
@@ -404,7 +409,7 @@ class SketchField extends PureComponent {
         this._handleUndo(item[0], item[1]);
       });
     } else {
-      this._handleUndo(obj, prevState, currState);
+      this._handleUndo(obj, prevState);
     }
     this._fc.discardActiveObject().renderAll();
     history.ignore = false;
@@ -432,14 +437,14 @@ class SketchField extends PureComponent {
     const history = this._history;
     history.ignore = true;
     if (history.canRedo()) {
-      let [obj, prevState, currState] = history.getCurrent();
+      let [obj, prevState] = history.getCurrent();
 
       if (obj.atomicList) {
         obj.atomicList.forEach((item) => {
           this._hanldeRedo(this.history[0], this.history[1]);
         });
       } else {
-        this._hanldeRedo(obj, prevState, currState);
+        this._hanldeRedo(obj, prevState);
       }
     }
     this._fc.renderAll();
@@ -553,8 +558,8 @@ class SketchField extends PureComponent {
       this._history.atomicStart();
       selected.forEach((obj) => {
         obj.__removed = true;
-        let objState = obj.toJSON();
-        obj.__originalState = objState;
+        let objState = this._objectToJSON(obj);
+        obj.__originalState = JSON.stringify(objState);
         let state = this._objectToString(objState);
         this._history.keep([obj, state, state]);
         canvas.remove(obj);
