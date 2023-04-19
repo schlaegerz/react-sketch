@@ -78,17 +78,18 @@ class SketchField extends PureComponent {
     action: true,
   };
 
-  _parseObject(obj){
-    if(this.props.parseObject)
-    {
-      return this.props.parseObject(obj)
-    }
-    else{
-      const res = JSON.parse(obj)
-      if(res.eraser){
-       res.eraser =  fabric.Eraser.fromObject(res.eraser)
-      }
-      else{
+  _parseObject(obj) {
+    if (this.props.parseObject) {
+      return this.props.parseObject(obj);
+    } else {
+      const res = JSON.parse(obj);
+      if (res.eraser) {
+        // This is only fake async unless we are loading an image. If we start to load
+        // stuff we need to rethink this
+        fabric.Eraser.fromObject(res.eraser, (newEraser) => {
+          res.eraser = newEraser;
+        });
+      } else {
         res.eraser = null;
       }
       return res;
@@ -146,6 +147,13 @@ class SketchField extends PureComponent {
    * }
    */
 
+  _objectToString = (obj) => {
+    if (this.props.stringifyObject) {
+      return this.props.stringifyObject(obj);
+    }
+    return JSON.stringify(obj);
+  };
+
   addImg = (dataUrl, options = {}) => {
     let canvas = this._fc;
     fabric.Image.fromURL(dataUrl, (oImg) => {
@@ -174,7 +182,7 @@ class SketchField extends PureComponent {
     //BEAUTIFY ADD
     let objState = obj.toJSON({ translateX: true, translateY: true });
     obj.__originalState = objState;
-    let state = JSON.stringify(objState);
+    let state = this._objectToString(objState);
     // object, previous state, current state
     this._history.keep([obj, state, state]);
   };
@@ -197,11 +205,12 @@ class SketchField extends PureComponent {
   _onObjectModified = (e) => {
     let obj = e.target;
     obj.__version += 1;
-    let prevState = JSON.stringify(obj.__originalState);
+    let prevState = this._objectToString(obj.__originalState);
     let objState = obj.toJSON();
     // record current object state as json and update to originalState
     obj.__originalState = objState;
-    let currState = JSON.stringify(objState);
+
+    let currState = this._objectToString(objState);
     this._history.keep([obj, prevState, currState]);
   };
 
@@ -546,7 +555,7 @@ class SketchField extends PureComponent {
         obj.__removed = true;
         let objState = obj.toJSON();
         obj.__originalState = objState;
-        let state = JSON.stringify(objState);
+        let state = this._objectToString(objState);
         this._history.keep([obj, state, state]);
         canvas.remove(obj);
       });
@@ -643,9 +652,9 @@ class SketchField extends PureComponent {
     canvas.add(iText);
   };
 
-  getCanvas = ()=>{
+  getCanvas = () => {
     return this._fc;
-  }
+  };
   componentDidMount = () => {
     let { tool, value, undoSteps, defaultValue, backgroundColor } = this.props;
 
@@ -683,24 +692,24 @@ class SketchField extends PureComponent {
     canvas.on("object:moving", this._onObjectMoving);
     canvas.on("object:scaling", this._onObjectScaling);
     canvas.on("object:rotating", this._onObjectRotating);
-    canvas.on("erasing:start", ()=>{
+    canvas.on("erasing:start", () => {
       this._history.atomicStart();
     });
 
     canvas.on("erasing:end", (e) => {
-        if (!e?.targets?.length) {
-          this._history.atomicEnd();
-          return;
-        }
-
-        for (const target of e.targets) {
-          if (target) {
-            this._onObjectModified({ target: target });
-          }
-        }
-        this._onObjectAdded({ target: e.path });
+      if (!e?.targets?.length) {
         this._history.atomicEnd();
-      });
+        return;
+      }
+
+      for (const target of e.targets) {
+        if (target) {
+          this._onObjectModified({ target: target });
+        }
+      }
+      this._onObjectAdded({ target: e.path });
+      this._history.atomicEnd();
+    });
     // IText Events fired on Adding Text
     // canvas.on("text:event:changed", console.log)
     // canvas.on("text:selection:changed", console.log)
