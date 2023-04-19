@@ -27,12 +27,14 @@ class History {
   }
   atomicEnd() {
     this.atomic = false;
-    this.keep([
-      {
-        atomicList: this.atomicList,
-      },
-    ]);
-    this.atomicList = [];
+    if (this.atomicList.length > 0) {
+      this.keep([
+        {
+          atomicList: this.atomicList,
+        },
+      ]);
+      this.atomicList = [];
+    }
   }
 
   /**

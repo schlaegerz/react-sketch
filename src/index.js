@@ -1,4 +1,4 @@
-import SketchField, {FabricCanvasTool} from "./SketchField";
+import SketchField, { FabricCanvasTool } from "./SketchField";
 import Tools from "./tools";
 
 export { SketchField, FabricCanvasTool };

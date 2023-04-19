@@ -1,5 +1,21 @@
 declare module "react-sketch" {
   import * as React from "react";
+  import { fabric, StaticCanvas } from "fabric";
+
+  class FabricCanvasTool {
+    constructor(canvas: any): void;
+
+    configureCanvas(props: any): void;
+
+    doMouseUp(event: any): void;
+
+    doMouseDown(event: any): void;
+
+    doMouseMove(event: any): void;
+
+    doMouseOut(event: any): void;
+    cleanupTool(evnet: any): void;
+  }
 
   export class SketchField extends React.PureComponent<{
     // the color of the line
@@ -29,6 +45,8 @@ declare module "react-sketch" {
     heightCorrection?: number;
     // Specify action on change
     onChange?: (evt: any) => void;
+    parseObject?: (obj: any) => any;
+    debugHistory?: boolean;
     // Default initial value
     defaultValue?: {};
     // Sketch width
@@ -49,6 +67,7 @@ declare module "react-sketch" {
      * Disable touch Scrolling on Canvas
      */
     disableTouchScroll(): void;
+    getCanvas(): StaticCanvas;
 
     /**
      * Add an image as object to the canvas
@@ -182,5 +201,6 @@ declare module "react-sketch" {
     ): void;
 
     addText(text: string, options?: {}): void;
+    addTool(toolName: string, tool: FabricCanvasTool);
   }
 }

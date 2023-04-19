@@ -88,6 +88,9 @@ class SketchField extends PureComponent {
       if(res.eraser){
        res.eraser =  fabric.Eraser.fromObject(res.eraser)
       }
+      else{
+        res.eraser = null;
+      }
       return res;
     }
   }
@@ -165,12 +168,6 @@ class SketchField extends PureComponent {
    * Action when an object is added to the canvas
    */
   _onObjectAdded = (e) => {
-    /*  BEAUTIFY REMOVE? 
-    if (!this.state.action) {
-      this.setState({ action: true });
-      return
-    }
-    */
     let obj = e.target;
     obj.__version = 1;
     // record current object state as json and save as originalState
@@ -544,7 +541,7 @@ class SketchField extends PureComponent {
       } else {
         selected.push(activeObj);
       }
-      this.atomicStart();
+      this._history.atomicStart();
       selected.forEach((obj) => {
         obj.__removed = true;
         let objState = obj.toJSON();
@@ -553,7 +550,7 @@ class SketchField extends PureComponent {
         this._history.keep([obj, state, state]);
         canvas.remove(obj);
       });
-      this.atomicEnd();
+      this._history.atomicEnd();
 
       canvas.discardActiveObject();
       canvas.requestRenderAll();
@@ -646,6 +643,9 @@ class SketchField extends PureComponent {
     canvas.add(iText);
   };
 
+  getCanvas = ()=>{
+    return this._fc;
+  }
   componentDidMount = () => {
     let { tool, value, undoSteps, defaultValue, backgroundColor } = this.props;
 
@@ -670,7 +670,7 @@ class SketchField extends PureComponent {
     window.addEventListener("resize", this._resize, false);
 
     // Initialize History, with maximum number of undo steps
-    this._history = new History(undoSteps);
+    this._history = new History(undoSteps, this.props.debugHistory);
 
     // Events binding
     canvas.on("object:added", this._onObjectAdded);
@@ -683,22 +683,23 @@ class SketchField extends PureComponent {
     canvas.on("object:moving", this._onObjectMoving);
     canvas.on("object:scaling", this._onObjectScaling);
     canvas.on("object:rotating", this._onObjectRotating);
+    canvas.on("erasing:start", ()=>{
+      this._history.atomicStart();
+    });
 
     canvas.on("erasing:end", (e) => {
         if (!e?.targets?.length) {
+          this._history.atomicEnd();
           return;
         }
 
-        const history = this._history;
-        history.atomicStart();
         for (const target of e.targets) {
-          console.log(target.eraser);
           if (target) {
             this._onObjectModified({ target: target });
           }
         }
         this._onObjectAdded({ target: e.path });
-        history.atomicEnd();
+        this._history.atomicEnd();
       });
     // IText Events fired on Adding Text
     // canvas.on("text:event:changed", console.log)
