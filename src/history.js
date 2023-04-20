@@ -22,8 +22,10 @@ class History {
   }
 
   atomicStart() {
-    this.atomic = true;
-    this.atomicList = [];
+    if (!this.atomic) {
+      this.atomic = true;
+      this.atomicList = [];
+    }
   }
   atomicEnd() {
     this.atomic = false;

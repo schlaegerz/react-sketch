@@ -181,6 +181,7 @@ class SketchField extends PureComponent {
    */
   _onObjectAdded = (e) => {
     let obj = e.target;
+
     obj.__version = 1;
     // record current object state as json and save as originalState
     //BEAUTIFY ADD
@@ -208,11 +209,41 @@ class SketchField extends PureComponent {
 
   _onObjectModified = (e) => {
     let obj = e.target;
+    if (!obj.__version && obj._objects) {
+      this._history.atomicStart();
+      let i = 0;
+      for (const curObj of obj._objects) {
+        this._onObjectModified({
+          target: curObj,
+          applyTransformToSaved: e.transform,
+          index: i++,
+        });
+      }
+      this._history.atomicEnd();
+
+      return;
+    }
+
     obj.__version += 1;
 
     let prevState = obj.__originalState;
     let objState = this._objToJSON(obj);
     // record current object state as json and update to originalState
+    if (e.applyTransformToSaved) {
+      const scale = obj.getTotalObjectScaling();
+      const pos = fabric.util.transformPoint(
+        { x: obj.left, y: obj.top },
+        obj.group.calcTransformMatrix()
+      );
+      objState.flipX = false;
+      objState.flipY = false;
+      objState.angle = fabric.util.qrDecompose(obj.calcTransformMatrix()).angle;
+      objState.scaleX = scale.scaleX || 1;
+      objState.scaleY = scale.scaleY || 1;
+      objState.top = pos.y;
+      objState.left = pos.x;
+    }
+
     obj.__originalState = this._objectToString(objState);
 
     this._history.keep([obj, prevState]);
@@ -264,7 +295,11 @@ class SketchField extends PureComponent {
     // Update the final state to new-generated object
     // Ignore Path object since it would be created after mouseUp
     // Assumed the last object in canvas.getObjects() in the newest object
-    if (this.props.tool !== Tool.Pencil && this.props.tool != "eraser") {
+    if (
+      this.props.tool !== Tool.Pencil &&
+      this.props.tool != "eraser" &&
+      this.props.tool != "select"
+    ) {
       const canvas = this._fc;
       const objects = canvas.getObjects();
       const newObj = objects[objects.length - 1];
@@ -362,7 +397,20 @@ class SketchField extends PureComponent {
   };
 
   _handleUndo(obj, prevState) {
-    if (obj.__removed) {
+    if (obj == this.backgroundImage) {
+      const eraserObj = JSON.parse(prevState);
+      if (!eraserObj.eraser) {
+        this.backgroundImage.eraser = null;
+        this.backgroundImage.__lastEraser = "{}";
+        this.backgroundImage.applyFilters();
+      } else {
+        fabric.Eraser.fromObject(eraserObj.eraser, (newEraser) => {
+          this.backgroundImage.eraser = newEraser;
+          this.backgroundImage.__lastEraser = prevState;
+          this.backgroundImage.applyFilters();
+        });
+      }
+    } else if (obj.__removed) {
       //this.setState({ action: false }, () => {
       this._fc.add(obj);
       if (obj.group) {
@@ -398,7 +446,9 @@ class SketchField extends PureComponent {
    * Perform an undo operation on canvas, if it cannot undo it will leave the canvas intact
    */
   undo = () => {
+    this._fc.discardActiveObject();
     let history = this._history;
+
     let [obj, prevState] = history.getCurrent();
     history.undo();
     history.ignore = true;
@@ -411,7 +461,7 @@ class SketchField extends PureComponent {
     } else {
       this._handleUndo(obj, prevState);
     }
-    this._fc.discardActiveObject().renderAll();
+    this._fc.renderAll();
     history.ignore = false;
 
     if (this.props.onChange) {
@@ -533,6 +583,7 @@ class SketchField extends PureComponent {
     this._fc.clear();
     this._history.clear();
     if (this.backgroundImage) {
+      this.backgroundImage.eraser = null;
       this._history.ignore = true;
       this._fc.add(this.backgroundImage);
       this._history.ignore = false;
@@ -697,22 +748,31 @@ class SketchField extends PureComponent {
     canvas.on("object:moving", this._onObjectMoving);
     canvas.on("object:scaling", this._onObjectScaling);
     canvas.on("object:rotating", this._onObjectRotating);
-    canvas.on("erasing:start", () => {
-      this._history.atomicStart();
-    });
-
     canvas.on("erasing:end", (e) => {
       if (!e?.targets?.length) {
-        this._history.atomicEnd();
         return;
       }
+      this._history.atomicStart();
 
       for (const target of e.targets) {
         if (target) {
-          this._onObjectModified({ target: target });
+          if ((target = this.backgroundImage)) {
+            this._history.keep([
+              this.backgroundImage,
+              this.backgroundImage.__lastEraser || "{}",
+            ]);
+            let objState = target.eraser
+              ? this._objToJSON(target.eraser)
+              : null;
+            this.backgroundImage.__lastEraser = this._objectToString({
+              eraser: objState,
+            });
+          } else {
+            this._onObjectModified({ target: target });
+          }
         }
       }
-      this._onObjectAdded({ target: e.path });
+      // this._onObjectAdded({ target: e.path });
       this._history.atomicEnd();
     });
     // IText Events fired on Adding Text
@@ -764,10 +824,11 @@ class SketchField extends PureComponent {
     (value || defaultValue) && this.fromJSON(value || defaultValue);
   };
 
-  componentWillUnmount = () =>
+  componentWillUnmount() {
     window.removeEventListener("resize", this._resize);
+  }
 
-  componentDidUpdate = (prevProps, prevState) => {
+  componentDidUpdate(prevProps, prevState) {
     if (
       this.state.parentWidth !== prevState.parentWidth ||
       this.props.width !== prevProps.width ||
@@ -796,25 +857,19 @@ class SketchField extends PureComponent {
     ) {
       this.fromJSON(this.props.value);
     }
-    if (
-      this.props.imageData &&
-      this.imageData &&
-      this.props.imageMode != this.imageMode
-    ) {
+    if (this.backgroundImage && this.props.imageMode != prevProps.imageMode) {
       var n = new fabric.Image.filters.Invert();
-      if (
-        (this.backgroundImage.filters.push(n),
-        this.backgroundImage.applyFilters(),
-        this._fc.requestRenderAll(),
-        this.props.onChange)
-      ) {
-        var o = this.props.onChange;
+      this.backgroundImage.filters.push(n);
+      this.backgroundImage.applyFilters();
+      this._fc.requestRenderAll();
+      if (this.props.onChange) {
+        var onChange = this.props.onChange;
         setTimeout(function () {
-          this.props.onChange();
+          onChange();
         }, 10);
       }
     }
-  };
+  }
 
   render = () => {
     let { className, style, width, height } = this.props;
