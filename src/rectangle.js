@@ -1,16 +1,14 @@
 /*eslint no-unused-vars: 0*/
 
-import FabricCanvasTool from './fabrictool'
+import FabricCanvasTool from "./fabrictool";
 
-import {fabric } from 'fabric'
-
+import { fabric } from "fabric";
 
 class Rectangle extends FabricCanvasTool {
-
   configureCanvas(props) {
     let canvas = this._canvas;
     canvas.isDrawingMode = canvas.selection = false;
-    canvas.forEachObject((o) => o.selectable = o.evented = false);
+    canvas.forEachObject((o) => (o.selectable = o.evented = false));
     this._width = props.lineWidth;
     this._color = props.lineColor;
     this._fill = props.fillColor;
@@ -25,8 +23,8 @@ class Rectangle extends FabricCanvasTool {
     this.rect = new fabric.Rect({
       left: this.startX,
       top: this.startY,
-      originX: 'left',
-      originY: 'top',
+      originX: "left",
+      originY: "top",
       width: pointer.x - this.startX,
       height: pointer.y - this.startY,
       stroke: this._color,
@@ -36,7 +34,7 @@ class Rectangle extends FabricCanvasTool {
       transparentCorners: false,
       selectable: false,
       evented: false,
-      angle: 0
+      angle: 0,
     });
     canvas.add(this.rect);
   }

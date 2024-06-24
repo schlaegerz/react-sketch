@@ -1,18 +1,16 @@
 /*eslint no-unused-vars: 0*/
 
-import FabricCanvasTool from './fabrictool'
+import FabricCanvasTool from "./fabrictool";
 
-import {fabric } from 'fabric'
-
+import { fabric } from "fabric";
 
 class Pan extends FabricCanvasTool {
-
   configureCanvas(props) {
     let canvas = this._canvas;
     canvas.isDrawingMode = canvas.selection = false;
-    canvas.forEachObject((o) => o.selectable = o.evented = false);
+    canvas.forEachObject((o) => (o.selectable = o.evented = false));
     //Change the cursor to the move grabber
-    canvas.defaultCursor = 'move';
+    canvas.defaultCursor = "move";
   }
 
   doMouseDown(o) {
@@ -30,7 +28,7 @@ class Pan extends FabricCanvasTool {
 
     canvas.relativePan({
       x: pointer.x - this.startX,
-      y: pointer.y - this.startY
+      y: pointer.y - this.startY,
     });
     canvas.renderAll();
   }
@@ -38,7 +36,6 @@ class Pan extends FabricCanvasTool {
   doMouseUp(o) {
     this.isDown = false;
   }
-
 }
 
 export default Pan;
